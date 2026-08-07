@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise Clipper Semanal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{
+  color-scheme: light;
+  --bg-dark:#150f2b;
+  --bg-dark2:#1d1640;
+  --yellow:#FFDD00;
+  --yellow-dark:#E8C700;
+  --card:#ffffff;
+  --text:#161226;
+  --muted:#655f78;
+  --border:#eae6f2;
+  --good:#1f9d55;
+  --bad:#d64545;
+  --info:#3457d5;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f5f3fa;color:var(--text);}
+header.top{background:linear-gradient(180deg,var(--bg-dark),var(--bg-dark2));color:#fff;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand .logo{background:var(--yellow);color:var(--bg-dark);font-weight:900;font-size:20px;padding:6px 10px;border-radius:8px;letter-spacing:0.5px;}
+.brand h1{font-size:17px;margin:0;font-weight:700;}
+.brand p{margin:0;font-size:12px;color:#c9c3e0;}
+nav.tabs{display:flex;gap:8px;}
+nav.tabs button{background:transparent;border:1px solid #3a3160;color:#d8d3ec;padding:9px 18px;border-radius:999px;cursor:pointer;font-size:13.5px;font-weight:600;transition:all .15s;}
+nav.tabs button.active{background:var(--yellow);color:var(--bg-dark);border-color:var(--yellow);}
+main{max-width:1180px;margin:0 auto;padding:24px 20px 80px;}
+section.panel{display:none;}
+section.panel.active{display:block;}
+h2.section-title{font-size:19px;margin:36px 0 14px;padding-bottom:8px;border-bottom:3px solid var(--yellow);display:inline-block;}
+h2.section-title:first-child{margin-top:0;}
+.note{background:#fff8d6;border:1px solid #f0e08a;border-radius:10px;padding:12px 16px;font-size:13px;color:#5c5220;margin-bottom:20px;line-height:1.5;}
+.grid{display:grid;gap:14px;}
+.grid.cols-4{grid-template-columns:repeat(4,1fr);}
+.grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.grid.cols-2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:900px){.grid.cols-4{grid-template-columns:repeat(2,1fr);}.grid.cols-3{grid-template-columns:repeat(2,1fr);}.grid.cols-2{grid-template-columns:1fr;}}
+@media(max-width:560px){.grid.cols-4{grid-template-columns:1fr;}.grid.cols-3{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(20,10,50,.04);}
+.kpi .label{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;}
+.kpi .value{font-size:26px;font-weight:800;margin:6px 0 2px;}
+.kpi .sub{font-size:12px;color:var(--muted);line-height:1.4;}
+.kpi .tag{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;}
+.tag.good{background:#e4f7ec;color:var(--good);}
+.tag.bad{background:#fbe9e9;color:var(--bad);}
+.tag.info{background:#e8ecfb;color:var(--info);}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.chart-card h3{margin:0 0 4px;font-size:14.5px;}
+.chart-card .desc{font-size:12px;color:var(--muted);margin-bottom:12px;}
+.chart-wrap{position:relative;height:280px;width:100%;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border);padding:8px 10px;}
+td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+a.postlink{color:var(--info);text-decoration:none;font-weight:600;}
+a.postlink:hover{text-decoration:underline;}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#f1eefb;color:#4b3fa0;}
+.insight-card{border-radius:14px;padding:16px 18px;border:1px solid var(--border);}
+.insight-card.good{background:#f3fbf6;border-color:#cdeedd;}
+.insight-card.bad{background:#fdf3f3;border-color:#f3d4d4;}
+.insight-card h4{margin:0 0 6px;font-size:14px;}
+.insight-card .dado{font-size:12.5px;color:#3d3853;margin-bottom:6px;}
+.insight-card .dado b{color:inherit;}
+.insight-card .decisao{font-size:12.5px;font-weight:700;color:#141221;background:rgba(255,255,255,.6);padding:8px 10px;border-radius:8px;margin-top:6px;}
+.commenters{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.commenters span{background:#f1eefb;color:#4b3fa0;font-size:11.5px;padding:3px 9px;border-radius:999px;}
+.week-block{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+.week-block h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:10px;}
+.week-block h3 .n{background:var(--bg-dark);color:var(--yellow);font-size:12px;padding:3px 10px;border-radius:999px;font-weight:800;}
+.idea{border-left:4px solid var(--yellow);padding:10px 14px;margin-bottom:10px;background:#fbfaff;border-radius:0 8px 8px 0;}
+.idea .meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.idea .meta span{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:2px 8px;border-radius:999px;background:#eee9fb;color:#4b3fa0;}
+.idea .titulo{font-weight:700;font-size:13.5px;margin-bottom:4px;}
+.idea .porque{font-size:12.5px;color:var(--muted);}
+.rules{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;}
+.rules ol{margin:0;padding-left:20px;}
+.rules li{margin-bottom:12px;font-size:13.5px;line-height:1.5;}
+.rules li b{color:var(--bg-dark);}
+footer{text-align:center;font-size:11.5px;color:#8a84a0;padding:24px;}
+.badge-format{font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;}
+.badge-format.reel{background:#e8ecfb;color:var(--info);}
+.badge-format.estatico{background:#fff3cf;color:#8a6d00;}
+#lastUpdated{font-size:11px;color:#c9c3e0;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">CLIPPER</div>
+    <div>
+      <h1>Análise Clipper Semanal</h1>
+      <p>@clipperbrasil · atualizado em <span id="lastUpdated"></span></p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button id="btn-dashboard" class="active" onclick="showTab('dashboard')">Dashboard</button>
+    <button id="btn-ideas" onclick="showTab('ideas')">Ideias para as próximas semanas</button>
+  </nav>
+</header>
+
+<main>
+
+<section id="tab-dashboard" class="panel active">
+
+  <div class="note">
+    <b>Metodologia:</b> análise baseada em 38 posts do perfil @clipperbrasil com dados verificados individualmente (curtidas, comentários, data, formato e comentários lidos na íntegra), amostrados de forma distribuída ao longo do período de <b>19/nov/2025 a 06/ago/2026</b> (o perfil publicou cerca de 105 posts nesse intervalo — a amostra cobre ~36% deles, espalhados por todos os meses, para manter a análise fiel ao que foi realmente lido). O Instagram Web não expõe contagem pública de <b>visualizações</b> para os vídeos deste perfil (não aparece nem na grade nem no player) — por isso "alcance de Reels" abaixo usa curtidas+comentários como proxy, não views reais. Nenhum número neste dashboard foi estimado sem checagem direta no post de origem.
+  </div>
+
+  <h2 class="section-title">Saudabilidade do perfil</h2>
+  <div class="grid cols-4">
+    <div class="card kpi">
+      <div class="label">Taxa de engajamento média</div>
+      <div class="value">0,80%</div>
+      <div class="sub">(curtidas+comentários) ÷ seguidores, média da amostra de 38 posts</div>
+      <span class="tag bad">Abaixo do benchmark</span>
+    </div>
+    <div class="card kpi">
+      <div class="label">Benchmark do porte da conta</div>
+      <div class="value">1–3%</div>
+      <div class="sub">Faixa média para contas de 10 mil–50 mil seguidores em 2026 (fonte: IQFluence, Apaya)</div>
+      <span class="tag info">14,4 mil seguidores</span>
+    </div>
+    <div class="card kpi">
+      <div class="label">Alcance de Reels vs Estático</div>
+      <div class="value">90 vs 129</div>
+      <div class="sub">Interações médias por post (curtidas+comentários). Estático performa melhor nesta amostra.</div>
+      <span class="tag good">Estático na frente</span>
+    </div>
+    <div class="card kpi">
+      <div class="label">Frequência de posts</div>
+      <div class="value">~2,8 / sem</div>
+      <div class="sub">~105 posts publicados em 37 semanas (contagem real, não amostrada)</div>
+      <span class="tag good">Cadência consistente</span>
+    </div>
+  </div>
+
+  <h2 class="section-title">Crescimento semanal de seguidores</h2>
+  <div class="chart-card">
+    <h3>Seguidores ao longo do tempo</h3>
+    <div class="desc">Ponto de partida registrado em 07/ago/2026 (14.400 seguidores, conforme exibido pelo Instagram). A cada segunda-feira, a atualização automática adiciona um novo ponto a este histórico.</div>
+    <div class="chart-wrap"><canvas id="chartFollowers"></canvas></div>
+  </div>
+
+  <h2 class="section-title">Engajamento por mês</h2>
+  <div class="chart-card">
+    <h3>Curtidas + comentários médios por mês</h3>
+    <div class="desc">Média de interações por post publicado em cada mês (amostra de 38 posts).</div>
+    <div class="chart-wrap"><canvas id="chartMonth"></canvas></div>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:14px;">
+    <div class="chart-card">
+      <h3>Engajamento por tema</h3>
+      <div class="desc">Média de interações por post, agrupado por tipo de conteúdo.</div>
+      <div class="chart-wrap"><canvas id="chartTheme"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Engajamento por formato</h3>
+      <div class="desc">Reel (vídeo) vs. Estático (foto/carrossel).</div>
+      <div class="chart-wrap"><canvas id="chartFormat"></canvas></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Engajamento por dia da semana</h2>
+  <div class="chart-card">
+    <h3>Média de interações por dia em que o post foi publicado</h3>
+    <div class="desc">Sexta-feira concentra 5 dos 10 posts de maior engajamento da amostra e tem a maior média entre os dias com volume relevante de posts.</div>
+    <div class="chart-wrap"><canvas id="chartWeekday"></canvas></div>
+  </div>
+
+  <h2 class="section-title">Top 10 posts</h2>
+  <div class="card" style="padding:0;overflow-x:auto;">
+    <table>
+      <thead><tr><th>#</th><th>Post</th><th>Data</th><th>Formato</th><th>Tema</th><th>Curtidas</th><th>Coment.</th><th>Total</th></tr></thead>
+      <tbody id="topPostsBody"></tbody>
+    </table>
+  </div>
+
+  <h2 class="section-title">Análise dos comentários — comunidade interna vs. público externo</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <h4 style="margin-top:0;">Núcleo fiel recorrente (~20 perfis)</h4>
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;">Este grupo de perfis comenta em quase todos os posts analisados, independentemente do tema — é uma comunidade real e engajada, mas concentrada. Em posts sem gancho de alcance (ex. sem tema sazonal/emocional), praticamente só este grupo aparece nos comentários.</p>
+      <div class="commenters">
+        <span>raissa_lr</span><span>giusinhorini</span><span>brunasinhorini</span><span>rosisinhorini</span><span>decaassumpcao</span><span>og.souto</span><span>4fickle__</span><span>tainan93a</span><span>_bzin.7</span><span>clauassumpcao</span><span>davidepontearso97</span><span>clipper_brr</span><span>vendedemais</span><span>tigueraa</span><span>biibassi</span><span>degaia__</span><span>luiza_kinsky</span><span>_naatssep</span>
+      </div>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0;">Posts que atraíram público novo/externo</h4>
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;">Os posts abaixo tiveram comentários majoritariamente de perfis que <b>não aparecem</b> no núcleo recorrente — sinal de alcance além da base fiel:</p>
+      <table style="font-size:12.5px;">
+        <tr><td><b>Dia dos Avós</b> (24/jul)</td><td>224 curtidas · comentaristas quase todos novos, incluindo proposta espontânea de parceria</td></tr>
+        <tr><td><b>Clippers gigantes</b> (13/abr)</td><td>311 curtidas · comentário de uma feira (Expo Head Grow) convidando a marca</td></tr>
+        <tr><td><b>Pote de Clipper no trabalho</b> (26/nov)</td><td>169 curtidas · tema universal (escritório) trouxe perfis fora do núcleo</td></tr>
+      </table>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:10px;">Também identificamos <b>pitches de parceria não respondidos publicamente</b> nos comentários (ex.: criadora de conteúdo se oferecendo para colaboração no post de 03/dez) — oportunidade de inbound de influenciadores sendo perdida.</p>
+    </div>
+  </div>
+
+  <h2 class="section-title">Onde estamos acertando</h2>
+  <div class="grid cols-2">
+    <div class="insight-card good">
+      <h4>Dinâmicas e perguntas multiplicam comentários</h4>
+      <div class="dado">Dado: posts com CTA/mistério ("Alerta Dinâmica" 20 coment., giveaway da Semana do Consumidor 35 coment., "qual seu Clipper mais antigo" 39 coment.) têm 3–6x mais comentários que posts sem pergunta clara (ex.: post de 132 curtidas com só 1 comentário).</div>
+      <div class="decisao">Decisão: toda legenda de lançamento deve terminar com uma pergunta ou dinâmica — não só anunciar o produto.</div>
+    </div>
+    <div class="insight-card good">
+      <h4>Formato estático performa melhor que Reels</h4>
+      <div class="dado">Dado: posts estáticos (foto/carrossel) têm média de 129 interações contra 90 dos Reels na amostra.</div>
+      <div class="decisao">Decisão: manter o carrossel de produto como formato-âncora da semana; usar Reels como reforço de tom/humor, não como aposta principal de alcance.</div>
+    </div>
+    <div class="insight-card good">
+      <h4>Temas emocionais/sazonais ampliam alcance</h4>
+      <div class="dado">Dado: posts de Dia dos Avós e Dia dos Pais trouxeram comentaristas majoritariamente novos, fora do núcleo fiel recorrente.</div>
+      <div class="decisao">Decisão: manter ao menos 1 post sazonal-emocional por mês como "porta de entrada" para público novo.</div>
+    </div>
+    <div class="insight-card good">
+      <h4>Comunidade fiel é forte e ativa</h4>
+      <div class="dado">Dado: ~20 perfis recorrentes comentam quase todos os posts, com defesa espontânea da marca e humor consistente.</div>
+      <div class="decisao">Decisão: criar reconhecimento formal (ex.: retomar "Clippeiro do mês") para reforçar essa fidelidade.</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Onde estamos errando</h2>
+  <div class="grid cols-2">
+    <div class="insight-card bad">
+      <h4>Engajamento abaixo do benchmark do porte</h4>
+      <div class="dado">Dado: taxa média de 0,80% contra benchmark de 1–3% para contas de 10–50 mil seguidores.</div>
+      <div class="decisao">Decisão: este é o ponto de atenção número 1 do perfil — priorizar formatos que já comprovadamente performam acima da média (estático + dinâmica) em vez de manter mix atual.</div>
+    </div>
+    <div class="insight-card bad">
+      <h4>Dependência de um núcleo pequeno de comentaristas</h4>
+      <div class="dado">Dado: o mesmo grupo de ~20 perfis aparece na maioria dos posts, mesmo em temas variados — risco de "eco" sem crescimento real de alcance novo.</div>
+      <div class="decisao">Decisão: aumentar frequência de formatos que comprovadamente atraem gente nova (emocional/sazonal, humor universal, parcerias com criadores).</div>
+    </div>
+    <div class="insight-card bad">
+      <h4>Reclamações de produto sem resposta pública</h4>
+      <div class="dado">Dado: no post de maior alcance do ano (492 curtidas), há reclamações recorrentes sobre durabilidade da faísca/pederneira sem resposta visível da marca nos comentários.</div>
+      <div class="decisao">Decisão: time de social deve responder publicamente dúvidas e reclamações recorrentes nos posts de maior alcance — é o conteúdo mais visto pelo perfil.</div>
+    </div>
+    <div class="insight-card bad">
+      <h4>Sem visibilidade de views de Reels</h4>
+      <div class="dado">Dado: o Instagram Web não expõe contagem de visualizações para os vídeos deste perfil nesta análise — impossível medir alcance real de Reels de forma pública.</div>
+      <div class="decisao">Decisão: puxar essa métrica direto do Instagram Insights (Meta Business Suite) nas próximas atualizações, fora do que é possível ver publicamente.</div>
+    </div>
+  </div>
+
+</section>
+
+<section id="tab-ideas" class="panel">
+
+  <div class="note">
+    Cada ideia abaixo está amarrada a um dado real da aba Dashboard — formato, dia da semana e o motivo. O plano assume a cadência atual de ~3 posts/semana.
+  </div>
+
+  <h2 class="section-title">Plano editorial — 4 semanas</h2>
+
+  <div class="week-block">
+    <h3><span class="n">SEMANA 1</span> Reabrir a conversa com quem reclama</h3>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Sexta-feira</span></div>
+      <div class="titulo">"Resolvendo o que vocês mais reclamam" — bastidor da melhoria na faísca/pederneira</div>
+      <div class="porque">Por quê: reclamações recorrentes de durabilidade aparecem no post mais curtido do ano sem resposta pública. Sexta é o dia de maior engajamento médio da amostra (148 interações/post) — o melhor momento pra colocar esse tema em pauta.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Reel</span><span>Terça-feira</span></div>
+      <div class="titulo">Humor com o "rato" reagindo à reclamação de durabilidade</div>
+      <div class="porque">Por quê: a série do "rato" é o tema de humor mais consistente da conta (presente em 7 dos 38 posts analisados) — usa o personagem já validado para tratar um assunto sensível com leveza.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Quarta-feira</span></div>
+      <div class="titulo">Dinâmica: "qual reclamação vira melhoria primeiro?" — enquete nos comentários</div>
+      <div class="porque">Por quê: posts com pergunta direta geraram até 6x mais comentários que posts sem CTA (ex.: 39 comentários no post "qual seu Clipper mais antigo").</div>
+    </div>
+  </div>
+
+  <div class="week-block">
+    <h3><span class="n">SEMANA 2</span> Trazer gente nova pra base</h3>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Sexta-feira</span></div>
+      <div class="titulo">Post emocional/relação (ex.: "seu Clipper e uma pessoa importante")</div>
+      <div class="porque">Por quê: os posts de Dia dos Avós e Dia dos Pais foram os que mais trouxeram comentaristas de fora do núcleo fiel recorrente — temas emocionais ampliam alcance real.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Reel</span><span>Segunda-feira</span></div>
+      <div class="titulo">Resposta pública a um pitch de parceria/criador recebido nos comentários</div>
+      <div class="porque">Por quê: identificamos pitches de colaboração não respondidos publicamente (ex.: criadora de conteúdo no post de 03/dez) — responder publicamente sinaliza abertura a parcerias e gera conteúdo novo.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Sexta-feira</span></div>
+      <div class="titulo">Lançamento de coleção com narrativa de "mistério" (estilo Alerta Dinâmica)</div>
+      <div class="porque">Por quê: os 3 posts de maior engajamento total do ano usam narrativa de coleção/lançamento com gancho de curiosidade (492, 349 e 327 interações).</div>
+    </div>
+  </div>
+
+  <div class="week-block">
+    <h3><span class="n">SEMANA 3</span> Reforçar a comunidade fiel</h3>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Quarta-feira</span></div>
+      <div class="titulo">Retomar "Clippeiro do mês" com destaque de um perfil do núcleo recorrente</div>
+      <div class="porque">Por quê: o post de reconhecimento de comunidade (03/dez) teve 19 comentários e reforçou pertencimento — o núcleo de ~20 perfis fiéis comenta quase todo post e merece reconhecimento formal recorrente.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Reel</span><span>Segunda-feira</span></div>
+      <div class="titulo">UGC: repost de coleções de seguidores (estilo "qual seu Clipper mais antigo")</div>
+      <div class="porque">Por quê: esse formato gerou o maior número de comentários de toda a amostra (39) — é o que mais ativa a comunidade fiel a compartilhar histórias próprias.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Sexta-feira</span></div>
+      <div class="titulo">Bastidor de produção/sustentabilidade (reutilização do Clipper)</div>
+      <div class="porque">Por quê: conteúdo institucional/sustentabilidade tem engajamento estável e reforça o diferencial "recarregável" da marca frente a isqueiros descartáveis.</div>
+    </div>
+  </div>
+
+  <div class="week-block">
+    <h3><span class="n">SEMANA 4</span> Testar o que ainda não sabemos</h3>
+    <div class="idea">
+      <div class="meta"><span>Reel</span><span>Sexta-feira</span></div>
+      <div class="titulo">Reel com CTA explícito de comentário (não só humor solto)</div>
+      <div class="porque">Por quê: Reels têm engajamento médio menor que estático (90 vs 129) — testar se adicionar uma pergunta direta no Reel reduz essa diferença antes de decidir cortar formato.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Quarta-feira</span></div>
+      <div class="titulo">Parceria com 1 micro-criador para ampliar alcance externo</div>
+      <div class="porque">Por quê: posts com colaboração externa (ex.: fiscaldebeck) já aparecem na conta mas sem cadência fixa — testar se parceria formal amplia comentaristas novos como os posts sazonais fizeram.</div>
+    </div>
+    <div class="idea">
+      <div class="meta"><span>Carrossel</span><span>Sexta-feira</span></div>
+      <div class="titulo">Fechamento do mês: enquete "qual lançamento você mais quer em [mês seguinte]"</div>
+      <div class="porque">Por quê: fecha o ciclo de dinâmica/pergunta (formato comprovadamente mais comentado) e já semeia pauta para o mês seguinte com dado direto dos seguidores.</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Regras de operação permanentes</h2>
+  <div class="rules">
+    <ol>
+      <li><b>Toda legenda termina com uma pergunta ou CTA.</b> É o maior alavancador de comentários identificado na análise (até 6x mais comentários que posts sem pergunta).</li>
+      <li><b>Sexta-feira é o dia âncora da semana</b> para o post de maior investimento (lançamento, dinâmica ou tema emocional) — é o dia com maior engajamento médio da amostra.</li>
+      <li><b>Carrossel/foto é o formato padrão; Reel é reforço.</b> Manter Reels para humor/tom leve, mas não depender deles para alcance até o gap de performance ser revisado.</li>
+      <li><b>Reclamações recorrentes nos comentários dos posts de maior alcance recebem resposta pública em até 48h.</b> Esses posts são o material mais visto do perfil.</li>
+      <li><b>1 post emocional/sazonal por mês, no mínimo</b>, mirando data comemorativa ou tema universal (família, trabalho, cotidiano) — é o que historicamente atrai comentaristas fora do núcleo fiel.</li>
+      <li><b>Pitches de parceria/criadores nos comentários são triados semanalmente</b> — hoje ficam sem resposta pública e representam alcance externo gratuito não aproveitado.</li>
+      <li><b>Puxar view count de Reels do Instagram Insights mensalmente</b> e trazer para este dashboard, já que a leitura pública do perfil não mostra essa métrica.</li>
+      <li><b>Toda segunda-feira às 9h, o dashboard é atualizado</b> com um novo ponto de seguidores e revisão dos posts da semana anterior — nunca com dado estimado; se a coleta não puder ser feita, o dashboard sinaliza a falha em vez de inventar número.</li>
+    </ol>
+  </div>
+
+</section>
+
+</main>
+
+<footer>
+  Dashboard gerado a partir de dados públicos do Instagram @clipperbrasil · atualização automática semanal (segunda-feira, 9h) · não substitui o Instagram Insights oficial da marca.
+</footer>
+
+<script>
+const FOLLOWER_HISTORY = [
+  {date:"2026-08-07", followers:14400}
+];
+
+const POSTS = [
+{code:"DXhMs3gjUzZ",date:"2026-04-24",format:"estatico",theme:"Lançamento de coleção",likes:492,comments:12},
+{code:"Dbtl7vXCXJ6",date:"2026-08-06",format:"estatico",theme:"Sazonal/Data comemorativa",likes:49,comments:2},
+{code:"DbswmlbxZIv",date:"2026-08-05",format:"reel",theme:"Parceria/Publi externa",likes:54,comments:0},
+{code:"DboLfj7CbA4",date:"2026-08-05",format:"estatico",theme:"Sazonal/Data comemorativa",likes:64,comments:0},
+{code:"DbMEZ-CPryO",date:"2026-07-24",format:"estatico",theme:"Sazonal/Data comemorativa",likes:224,comments:9},
+{code:"DWZv_2OjYPY",date:"2026-03-27",format:"estatico",theme:"Sustentabilidade/Institucional",likes:74,comments:5},
+{code:"DRDIDrwDysG",date:"2025-11-14",format:"estatico",theme:"Comunidade/UGC",likes:108,comments:39},
+{code:"DbeLuLypwog",date:"2026-08-01",format:"reel",theme:"Produto/Estilo de vida",likes:116,comments:8},
+{code:"DbT9lNHpoXD",date:"2026-07-27",format:"estatico",theme:"Engajamento/Dinâmica",likes:35,comments:11},
+{code:"DbEcP1tCTI2",date:"2026-07-21",format:"estatico",theme:"Produto/Estilo de vida",likes:79,comments:6},
+{code:"DanpPf_EXMe",date:"2026-07-10",format:"estatico",theme:"Engajamento/Dinâmica",likes:182,comments:20},
+{code:"DaTjCltD9Ed",date:"2026-07-02",format:"estatico",theme:"Lançamento de coleção",likes:43,comments:4},
+{code:"DZ5wF8uPpX9",date:"2026-06-22",format:"reel",theme:"Lançamento de coleção",likes:101,comments:7},
+{code:"DZay-jHidTR",date:"2026-06-10",format:"estatico",theme:"Lançamento de coleção",likes:327,comments:22},
+{code:"DY7iiJTRYNf",date:"2026-05-29",format:"reel",theme:"Produto/Estilo de vida",likes:109,comments:7},
+{code:"DYiNSwSDzdW",date:"2026-05-19",format:"estatico",theme:"Lançamento de coleção",likes:132,comments:1},
+{code:"DYF6cTXBYt1",date:"2026-05-08",format:"reel",theme:"Humor (rato)",likes:32,comments:0},
+{code:"DXjxOAqhJpN",date:"2026-04-25",format:"reel",theme:"Humor (rato)",likes:61,comments:7},
+{code:"DXFnNhljb4g",date:"2026-04-13",format:"estatico",theme:"Lançamento de coleção",likes:311,comments:16},
+{code:"DWl-MwAhkfL",date:"2026-04-01",format:"reel",theme:"Humor (rato)",likes:76,comments:21},
+{code:"DWUlOZJjVHR",date:"2026-03-25",format:"estatico",theme:"Produto/Estilo de vida",likes:37,comments:10},
+{code:"DV9egS3Pmp7",date:"2026-03-16",format:"reel",theme:"Produto/Estilo de vida",likes:99,comments:10},
+{code:"DVwmKR7CcDb",date:"2026-03-11",format:"estatico",theme:"Engajamento/Dinâmica",likes:72,comments:35},
+{code:"DVQ7RxkDTV_",date:"2026-02-27",format:"estatico",theme:"Humor (rato)",likes:103,comments:25},
+{code:"DUoscyhDWJ7",date:"2026-02-11",format:"estatico",theme:"Produto/Estilo de vida",likes:65,comments:11},
+{code:"DUjavvkjzi3",date:"2026-02-09",format:"estatico",theme:"Sazonal/Data comemorativa",likes:43,comments:11},
+{code:"DUEUeNoD-cf",date:"2026-01-28",format:"estatico",theme:"Sustentabilidade/Institucional",likes:45,comments:15},
+{code:"DT3dNRWj2fA",date:"2026-01-23",format:"estatico",theme:"Engajamento/Dinâmica",likes:40,comments:24},
+{code:"DTliDjXjx0r",date:"2026-01-16",format:"estatico",theme:"Sustentabilidade/Institucional",likes:55,comments:14},
+{code:"DTTZlQajxB9",date:"2026-01-09",format:"estatico",theme:"Engajamento/Dinâmica",likes:41,comments:17},
+{code:"DTJLiitETjz",date:"2026-01-05",format:"estatico",theme:"Engajamento/Dinâmica",likes:58,comments:6},
+{code:"DSqGANSjeRB",date:"2025-12-24",format:"reel",theme:"Sazonal/Data comemorativa",likes:42,comments:11},
+{code:"DSlKsKgiXX9",date:"2025-12-22",format:"reel",theme:"Humor (rato)",likes:80,comments:14},
+{code:"DSTHcFiDeaM",date:"2025-12-15",format:"reel",theme:"Humor (rato)",likes:68,comments:11},
+{code:"DSBHFUpiTZV",date:"2025-12-08",format:"reel",theme:"Humor (rato)",likes:38,comments:14},
+{code:"DRzqz8mjSrH",date:"2025-12-03",format:"estatico",theme:"Comunidade/UGC",likes:74,comments:19},
+{code:"DRiO-F3j4eA",date:"2025-11-26",format:"reel",theme:"Produto/Estilo de vida",likes:169,comments:26},
+{code:"DRP_gdzD-4b",date:"2025-11-19",format:"reel",theme:"Humor (rato)",likes:64,comments:19}
+];
+
+const FOLLOWERS_BASELINE = 14400;
+
+function showTab(name){
+  document.getElementById('tab-dashboard').classList.toggle('active', name==='dashboard');
+  document.getElementById('tab-ideas').classList.toggle('active', name==='ideas');
+  document.getElementById('btn-dashboard').classList.toggle('active', name==='dashboard');
+  document.getElementById('btn-ideas').classList.toggle('active', name==='ideas');
+}
+
+document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+const WEEKDAY_PT = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const MONTH_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function fmtDateBR(iso){
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// Top 10
+const topPosts = [...POSTS].sort((a,b)=> (b.likes+b.comments) - (a.likes+a.comments)).slice(0,10);
+const tbody = document.getElementById('topPostsBody');
+topPosts.forEach((p,i)=>{
+  const tr = document.createElement('tr');
+  const url = `https://www.instagram.com/clipperbrasil/${p.format==='reel'?'reel':'p'}/${p.code}/`;
+  tr.innerHTML = `<td>${i+1}</td>
+    <td><a class="postlink" href="${url}" target="_blank" rel="noopener">Ver post ↗</a></td>
+    <td>${fmtDateBR(p.date)}</td>
+    <td><span class="badge-format ${p.format}">${p.format==='reel'?'Reel':'Estático'}</span></td>
+    <td><span class="pill">${p.theme}</span></td>
+    <td>${p.likes}</td>
+    <td>${p.comments}</td>
+    <td><b>${p.likes+p.comments}</b></td>`;
+  tbody.appendChild(tr);
+});
+
+// Followers chart
+new Chart(document.getElementById('chartFollowers'), {
+  type:'line',
+  data:{
+    labels: FOLLOWER_HISTORY.map(f=>fmtDateBR(f.date)),
+    datasets:[{
+      label:'Seguidores',
+      data: FOLLOWER_HISTORY.map(f=>f.followers),
+      borderColor:'#E8C700',
+      backgroundColor:'rgba(255,221,0,0.15)',
+      fill:true,
+      tension:0.25,
+      pointBackgroundColor:'#150f2b',
+      pointRadius:5
+    }]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false}}}
+});
+
+// Month aggregation
+const byMonth = {};
+POSTS.forEach(p=>{
+  const key = p.date.slice(0,7);
+  if(!byMonth[key]) byMonth[key] = {sum:0,n:0};
+  byMonth[key].sum += p.likes+p.comments;
+  byMonth[key].n += 1;
+});
+const monthKeys = Object.keys(byMonth).sort();
+new Chart(document.getElementById('chartMonth'), {
+  type:'bar',
+  data:{
+    labels: monthKeys.map(k=>{const [y,m]=k.split('-');return MONTH_PT[parseInt(m)-1]+'/'+y.slice(2);}),
+    datasets:[{
+      label:'Interações médias',
+      data: monthKeys.map(k=> Math.round(byMonth[k].sum/byMonth[k].n)),
+      backgroundColor:'#150f2b',
+      borderRadius:5
+    }]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
+
+// Theme aggregation
+const byTheme = {};
+POSTS.forEach(p=>{
+  if(!byTheme[p.theme]) byTheme[p.theme] = {sum:0,n:0};
+  byTheme[p.theme].sum += p.likes+p.comments;
+  byTheme[p.theme].n += 1;
+});
+const themeKeys = Object.keys(byTheme).sort((a,b)=> (byTheme[b].sum/byTheme[b].n) - (byTheme[a].sum/byTheme[a].n));
+new Chart(document.getElementById('chartTheme'), {
+  type:'bar',
+  data:{
+    labels: themeKeys,
+    datasets:[{
+      label:'Interações médias',
+      data: themeKeys.map(k=> Math.round(byTheme[k].sum/byTheme[k].n)),
+      backgroundColor:'#FFDD00',
+      borderRadius:5
+    }]
+  },
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
+
+// Format aggregation
+const byFormat = {estatico:{sum:0,n:0},reel:{sum:0,n:0}};
+POSTS.forEach(p=>{ byFormat[p.format].sum += p.likes+p.comments; byFormat[p.format].n += 1; });
+new Chart(document.getElementById('chartFormat'), {
+  type:'bar',
+  data:{
+    labels:['Estático (foto/carrossel)','Reel (vídeo)'],
+    datasets:[{
+      label:'Interações médias',
+      data:[Math.round(byFormat.estatico.sum/byFormat.estatico.n), Math.round(byFormat.reel.sum/byFormat.reel.n)],
+      backgroundColor:['#FFDD00','#3457d5'],
+      borderRadius:5
+    }]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+});
+
+// Weekday aggregation
+const byWeekday = [0,1,2,3,4,5,6].map(()=>({sum:0,n:0}));
+POSTS.forEach(p=>{
+  const d = new Date(p.date+'T12:00:00');
+  const wd = d.getDay();
+  byWeekday[wd].sum += p.likes+p.comments;
+  byWeekday[wd].n += 1;
+});
+new Chart(document.getElementById('chartWeekday'), {
+  type:'bar',
+  data:{
+    labels: WEEKDAY_PT,
+    datasets:[{
+      label:'Interações médias',
+      data: byWeekday.map(w=> w.n ? Math.round(w.sum/w.n) : 0),
+      backgroundColor:'#150f2b',
+      borderRadius:5
+    },{
+      label:'Nº de posts',
+      data: byWeekday.map(w=>w.n),
+      type:'line',
+      borderColor:'#d64545',
+      backgroundColor:'#d64545',
+      yAxisID:'y1'
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{
+      y:{beginAtZero:true,position:'left'},
+      y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false}}
+    }
+  }
+});
+</script>
+
+</body>
+</html>
